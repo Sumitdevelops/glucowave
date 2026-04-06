@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, BarChart3, ClipboardList, Bell, User, Activity, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, BarChart3, ClipboardList, Bell, User, Activity, ChevronLeft, ChevronRight, MessageCircle } from 'lucide-react';
 import { useState, createContext, useContext } from 'react';
 
 // ── Shared context so DashboardLayout can read collapsed state ──
@@ -9,6 +9,7 @@ export const useSidebar = () => useContext(SidebarContext);
 const menuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
   { icon: BarChart3, label: 'Analytics', path: '/analytics' },
+  { icon: MessageCircle, label: 'AI Chat', path: '/chatbot' },
   { icon: ClipboardList, label: 'Logs', path: '/dashboard' },
   { icon: Bell, label: 'Alerts', path: '/alerts' },
   { icon: User, label: 'Profile', path: '/dashboard' },
