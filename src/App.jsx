@@ -10,6 +10,7 @@ import Dashboard from './pages/Dashboard';
 import Alerts from './pages/Alerts';
 import Analytics from './pages/Analytics';
 import Predict from './pages/Predict';
+import AIChatbot from './pages/AIChatbot';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
 export default function App() {
@@ -59,6 +60,14 @@ export default function App() {
               element={(
                 <ProtectedRoute>
                   <Predict />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/chatbot"
+              element={(
+                <ProtectedRoute>
+                  <AIChatbot />
                 </ProtectedRoute>
               )}
             />
