@@ -15,12 +15,15 @@ import {
   calculateLBGIRisk
 } from '../utils/glucosePrediction';
 import { getUserScopedKey } from '../utils/userStorage';
+import { useAuth } from '../context/useAuth';
+import { addUserPrediction } from '../services/userData';
 
 // ML Engine
 import { initializeMLModel, predictTrajectoryML } from '../utils/mlEngine';
 
 export default function Predict() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const defaultLastMealTime = (() => {
     const d = new Date();
     d.setHours(d.getHours() - 1);
@@ -99,6 +102,21 @@ export default function Predict() {
       chartData,
       recommendations,
     });
+
+    if (user?.uid) {
+      try {
+        await addUserPrediction(user.uid, {
+          glucose: glucoseVal,
+          lastMealTime,
+          mealType,
+          riskLevel,
+          lbgiScore: Math.round(lbgiScore * 100) / 100,
+          predicted2Hr: trajectory.data[8],
+        });
+      } catch (error) {
+        console.warn('Failed to persist prediction', error);
+      }
+    }
 
     setIsLoading(false);
   };
