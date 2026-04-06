@@ -1,4 +1,5 @@
-import { Syringe, Utensils, Dumbbell, Heart } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Syringe, Utensils, Dumbbell, Heart, Activity } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import GlucoseDisplay from '../components/dashboard/GlucoseDisplay';
@@ -8,6 +9,8 @@ import StatCard from '../components/dashboard/StatCard';
 import { currentGlucose, predictionData, insulinLogs, mealLogs, activityLogs } from '../data/mockData';
 
 export default function Dashboard() {
+  const navigate = useNavigate();
+
   return (
     <div>
       <Navbar />
@@ -29,6 +32,18 @@ export default function Dashboard() {
             <div>
               <PredictionCard data={predictionData} />
             </div>
+          </div>
+
+          {/* Action Button: Start Predicting */}
+          <div className="flex justify-center w-full my-2">
+            <button
+              onClick={() => navigate('/predict')}
+              className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-4 px-10 rounded-2xl shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 w-full md:w-auto text-lg flex items-center justify-center gap-3"
+              id="start-predicting-btn"
+            >
+              <Activity size={24} />
+              Start Predicting
+            </button>
           </div>
 
           {/* Middle: Chart */}

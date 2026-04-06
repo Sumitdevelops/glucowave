@@ -52,7 +52,7 @@ export default function Signup() {
     // Simulate API call
     setTimeout(() => {
       setLoading(false);
-      navigate('/dashboard');
+      navigate('/onboarding');
     }, 1500);
   };
 

@@ -576,3 +576,229 @@ body {
 .light .bg-orange-600 {
   background-color: #ea580c !important;
 }
+
+/* ── Prediction Page Styles ─────────────────────────────────────── */
+
+/* Back button */
+.predict-back-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.75rem;
+  background: rgba(249, 115, 22, 0.1);
+  border: 1px solid rgba(249, 115, 22, 0.2);
+  color: #f97316;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.predict-back-btn:hover {
+  background: rgba(249, 115, 22, 0.2);
+  border-color: rgba(249, 115, 22, 0.4);
+  transform: translateX(-2px);
+}
+
+/* Form field wrapper */
+.predict-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Form labels */
+.predict-label {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #57534e;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.light .predict-label {
+  color: #57534e;
+}
+
+/* Form inputs */
+.predict-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  border: 1.5px solid #e7e5e4;
+  background: #ffffff;
+  color: #1a1a1a;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.predict-input:focus {
+  border-color: #f97316;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.12);
+}
+
+.predict-input::placeholder {
+  color: #a8a29e;
+}
+
+/* Result card */
+.predict-result-card {
+  border-radius: 1rem;
+  padding: 1.25rem;
+  border: 1px solid;
+  transition: all 0.2s ease;
+}
+
+.predict-result-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+/* Spinner */
+.predict-spinner {
+  display: inline-block;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 2.5px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: predict-spin 0.7s linear infinite;
+}
+
+@keyframes predict-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Result entrance animation */
+.predict-results-enter {
+  animation: predict-slide-up 0.5s ease-out;
+}
+
+@keyframes predict-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Dark theme overrides for prediction page ── */
+
+/* Dark: predict inputs */
+.predict-input {
+  background: #0f1535 !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #e2e8f0 !important;
+}
+
+.predict-input:focus {
+  border-color: #f97316 !important;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15) !important;
+}
+
+.predict-input::placeholder {
+  color: #64748b !important;
+}
+
+/* Dark: predict labels */
+.predict-label {
+  color: #94a3b8 !important;
+}
+
+/* Dark: back button */
+.predict-back-btn {
+  background: rgba(249, 115, 22, 0.1);
+  border-color: rgba(249, 115, 22, 0.2);
+  color: #f97316;
+}
+
+/* ── Light theme overrides ── */
+.light .predict-input {
+  background: #ffffff !important;
+  border-color: #e7e5e4 !important;
+  color: #1a1a1a !important;
+}
+
+.light .predict-input:focus {
+  border-color: #f97316 !important;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.12) !important;
+}
+
+.light .predict-input::placeholder {
+  color: #a8a29e !important;
+}
+
+.light .predict-label {
+  color: #57534e !important;
+}
+
+.light .predict-back-btn {
+  background: rgba(249, 115, 22, 0.08);
+  border-color: rgba(249, 115, 22, 0.15);
+}
+
+/* Dark theme result cards */
+.predict-result-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.light .predict-result-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+/* Recharts tooltip dark mode */
+.recharts-default-tooltip {
+  background: #0f1535 !important;
+  border-color: rgba(249, 115, 22, 0.3) !important;
+  color: #e2e8f0 !important;
+}
+
+.light .recharts-default-tooltip {
+  background: #ffffff !important;
+  border-color: #fed7aa !important;
+  color: #1a1a1a !important;
+}
+
+/* Dark red-50 for result cards */
+.bg-red-50 {
+  background-color: rgba(239, 68, 68, 0.1) !important;
+}
+
+.light .bg-red-50 {
+  background-color: #fef2f2 !important;
+}
+
+.bg-red-100 {
+  background-color: rgba(239, 68, 68, 0.15) !important;
+}
+
+.light .bg-red-100 {
+  background-color: #fee2e2 !important;
+}
+
+.border-red-200 {
+  border-color: rgba(239, 68, 68, 0.2) !important;
+}
+
+.light .border-red-200 {
+  border-color: #fecaca !important;
+}
+
+/* Emerald / green overrides */
+.bg-emerald-50 {
+  background-color: rgba(16, 185, 129, 0.1) !important;
+}
+
+.light .bg-emerald-50 {
+  background-color: #ecfdf5 !important;
+}
+
