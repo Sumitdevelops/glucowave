@@ -3,14 +3,11 @@ import { createContext, useContext, useState, useEffect } from 'react';
 const ThemeContext = createContext();
 
 export function ThemeProvider({ children }) {
-  const [isDark, setIsDark] = useState(true);
-
-  useEffect(() => {
+  const [isDark, setIsDark] = useState(() => {
     const savedTheme = localStorage.getItem('theme');
-    if (savedTheme) {
-      setIsDark(savedTheme === 'dark');
-    }
-  }, []);
+    if (savedTheme) return savedTheme === 'dark';
+    return false;
+  });
 
   useEffect(() => {
     const root = document.documentElement;
