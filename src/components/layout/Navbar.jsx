@@ -17,6 +17,7 @@ const landingLinks = [
 const dashboardLinks = [
   { label: 'Dashboard', href: '/dashboard' },
   { label: 'Analytics', href: '/analytics' },
+  { label: 'AI Chat', href: '/chatbot' },
   { label: 'Alerts', href: '/alerts' },
 ];
 
