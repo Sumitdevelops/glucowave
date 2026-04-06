@@ -12,6 +12,7 @@ import Analytics from './pages/Analytics';
 import Predict from './pages/Predict';
 import AIChatbot from './pages/AIChatbot';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import ChatbotFAB from './components/layout/ChatbotFAB';
 
 export default function App() {
   return (
@@ -72,6 +73,7 @@ export default function App() {
               )}
             />
           </Routes>
+          <ChatbotFAB />
         </Router>
       </AuthProvider>
     </ThemeProvider>
