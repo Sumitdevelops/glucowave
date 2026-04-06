@@ -56,8 +56,23 @@ export default function Dashboard() {
   }, [user?.uid]);
 
   const insulinLogs = logs.filter((l) => l.type === 'insulin');
-  const mealLogs = logs.filter((l) => l.type === 'meal');
+  const explicitMealLogs = logs.filter((l) => l.type === 'meal');
   const activityLogs = logs.filter((l) => l.type === 'activity');
+
+  const implicitMealLogs = predictions.filter(p => p.mealType).map(p => ({
+    id: p.id + '_implicit_meal',
+    type: 'meal',
+    name: p.mealType,
+    value: p.estimatedCarbs || 0,
+    unit: 'g',
+    date: new Date(p.createdAtMs || Date.now()).toLocaleDateString(),
+    time: p.lastMealTime || new Date(p.createdAtMs || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    createdAtMs: (p.createdAtMs || Date.now()) - 1,
+    subtitle: 'AI Estimated'
+  }));
+
+  const mealLogs = [...explicitMealLogs, ...implicitMealLogs];
+
   const latestPrediction = predictions[0];
   const today = new Date().toLocaleDateString();
   const insulinToday = insulinLogs.filter((l) => l.date === today);
@@ -111,15 +126,17 @@ export default function Dashboard() {
   // Combine all entries for a unified activity feed
   const allEntries = [
     ...logs,
+    ...implicitMealLogs,
     ...predictions.map((p) => ({
       id: p.id,
       type: 'glucose',
-      name: 'Glucose Reading',
+      name: `Glucose (${p.riskLevel || 'Unknown'} Risk)`,
       value: p.glucose,
       unit: 'mg/dl',
       time: new Date(p.createdAtMs || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       date: new Date(p.createdAtMs || Date.now()).toLocaleDateString(),
-      createdAtMs: p.createdAtMs || Date.now()
+      createdAtMs: p.createdAtMs || Date.now(),
+      subtitle: `Pred 2Hr: ${Math.round(p.predicted2Hr || p.glucose || 0)} mg/dL • LBGI: ${p.lbgiScore || 0}`
     }))
   ].sort((a, b) => b.createdAtMs - a.createdAtMs);
 
@@ -232,7 +249,15 @@ export default function Dashboard() {
                       </div>
                       <div>
                         <p className="text-sm font-bold text-gray-900">{entry.name}</p>
-                        <p className="text-xs text-gray-500">{entry.time || '--:--'} • {entry.date || 'Today'}</p>
+                        <p className="text-xs text-gray-500">
+                          {entry.time || '--:--'} • {entry.date || 'Today'}
+                          {entry.subtitle && (
+                            <>
+                              <span className="mx-1">•</span>
+                              <span className="text-orange-600 font-medium">{entry.subtitle}</span>
+                            </>
+                          )}
+                        </p>
                       </div>
                     </div>
                     <span className={`text-base font-bold ${activeColor.split(' ')[0]}`}>
