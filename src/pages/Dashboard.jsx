@@ -72,28 +72,25 @@ export default function Dashboard() {
               ? 55
               : 20,
         timeWindow: '2 hours',
-        predictedValue: latestPrediction.predicted2Hr ?? latestPrediction.glucose ?? 110,
+        predictedValue: latestPrediction.predicted2Hr ?? latestPrediction.glucose ?? 0,
         confidence: latestPrediction.riskLevel === 'HIGH' ? 95 : 88,
       }
-    : {
-        risk: 20,
-        timeWindow: '2 hours',
-        predictedValue: 110,
-        confidence: 80,
-      };
+    : null;
 
-  const currentGlucose = {
-    value: latestPrediction?.glucose ?? 110,
-    unit: 'mg/dl',
-    status:
-      (latestPrediction?.glucose ?? 110) < 70
-        ? 'low'
-        : (latestPrediction?.glucose ?? 110) > 180
-          ? 'high'
-          : 'normal',
-    trend: 'stable',
-    lastUpdated: latestPrediction ? 'just now' : 'no recent prediction',
-  };
+  const currentGlucose = latestPrediction
+    ? {
+        value: latestPrediction.glucose ?? 0,
+        unit: 'mg/dl',
+        status:
+          (latestPrediction.glucose ?? 0) < 70
+            ? 'low'
+            : (latestPrediction.glucose ?? 0) > 180
+              ? 'high'
+              : 'normal',
+        trend: 'stable',
+        lastUpdated: 'just now',
+      }
+    : null;
 
   const chartPoints = [...predictions]
     .reverse()
@@ -110,6 +107,21 @@ export default function Dashboard() {
       glucose: p.glucose ?? 0,
       predicted: p.predicted2Hr ?? p.glucose ?? 0,
     }));
+
+  // Combine all entries for a unified activity feed
+  const allEntries = [
+    ...logs,
+    ...predictions.map((p) => ({
+      id: p.id,
+      type: 'glucose',
+      name: 'Glucose Reading',
+      value: p.glucose,
+      unit: 'mg/dl',
+      time: new Date(p.createdAtMs || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      date: new Date(p.createdAtMs || Date.now()).toLocaleDateString(),
+      createdAtMs: p.createdAtMs || Date.now()
+    }))
+  ].sort((a, b) => b.createdAtMs - a.createdAtMs);
 
   return (
     <div>
@@ -128,11 +140,25 @@ export default function Dashboard() {
 
           {/* Top: Glucose + Prediction */}
           <div className="grid lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2">
-              <GlucoseDisplay data={currentGlucose} />
+            <div className="lg:col-span-2 flex flex-col">
+              {currentGlucose ? (
+                <GlucoseDisplay data={currentGlucose} />
+              ) : (
+                <div className="bg-white rounded-2xl p-8 shadow-md border border-gray-200 flex flex-col items-center justify-center text-center h-full min-h-[200px]">
+                  <Activity size={48} className="text-gray-300 mb-4" />
+                  <p className="text-gray-500 font-medium">No recent glucose data found.</p>
+                  <p className="text-sm text-gray-400 mt-1">Click 'Start Predicting' to log your current value.</p>
+                </div>
+              )}
             </div>
-            <div>
-              <PredictionCard data={predictionData} />
+            <div className="flex flex-col">
+              {predictionData ? (
+                <PredictionCard data={predictionData} />
+              ) : (
+                <div className="bg-white rounded-2xl p-8 shadow-md border border-gray-200 flex flex-col items-center justify-center text-center h-full min-h-[200px]">
+                  <p className="text-gray-400 text-sm">No prediction available.</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -184,46 +210,45 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Recent logs */}
-          <div className="grid lg:grid-cols-2 gap-6">
-            {/* Recent Meals */}
-            <div className="bg-white rounded-2xl p-6 shadow-md border border-gray-200">
-              <h3 className="font-bold text-gray-900 font-[Poppins] mb-4 flex items-center gap-2">
-                <Utensils size={18} className="text-orange-600" /> Recent Meals
-              </h3>
-              <div className="flex flex-col gap-3">
-                {mealLogs.slice(0, 3).map((meal) => (
-                  <div key={meal.id} className="flex items-center justify-between p-3 rounded-xl bg-orange-50 hover:bg-orange-100 transition-colors">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{meal.name}</p>
-                      <p className="text-xs text-gray-600">{meal.time || '--:--'} • {meal.date || 'Today'}</p>
-                    </div>
-                    <span className="text-sm font-semibold text-orange-600">{meal.value || 0}g</span>
-                  </div>
-                ))}
-                {mealLogs.length === 0 && <p className="text-sm text-gray-500">No meal logs yet.</p>}
-              </div>
-            </div>
+          {/* Complete Activity Feed */}
+          <div className="bg-white rounded-2xl p-6 shadow-md border border-gray-200">
+            <h3 className="font-bold text-gray-900 font-[Poppins] mb-4 flex items-center gap-2">
+              <Activity size={20} className="text-orange-600" /> Input Log History
+            </h3>
+            <div className="flex flex-col gap-3 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
+              {allEntries.map((entry) => {
+                const isMeal = entry.type === 'meal';
+                const isInsulin = entry.type === 'insulin';
+                const isGlucose = entry.type === 'glucose';
 
-            {/* Recent Insulin */}
-            <div className="bg-white rounded-2xl p-6 shadow-md border border-gray-200">
-              <h3 className="font-bold text-gray-900 font-[Poppins] mb-4 flex items-center gap-2">
-                <Syringe size={18} className="text-orange-600" /> Recent Insulin
-              </h3>
-              <div className="flex flex-col gap-3">
-                {insulinLogs.slice(0, 3).map((log) => (
-                  <div key={log.id} className="flex items-center justify-between p-3 rounded-xl bg-orange-50 hover:bg-orange-100 transition-colors">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{log.name}</p>
-                      <p className="text-xs text-gray-600">{log.time || '--:--'} • {log.date || 'Today'}</p>
+                const IconTag = isMeal ? Utensils : isInsulin ? Syringe : isGlucose ? Activity : Dumbbell;
+                const activeColor = isMeal ? 'text-orange-600 bg-orange-100' : isInsulin ? 'text-blue-600 bg-blue-100' : isGlucose ? 'text-red-600 bg-red-100' : 'text-purple-600 bg-purple-100';
+                
+                return (
+                  <div key={entry.id || Math.random()} className="flex items-center justify-between p-4 rounded-xl bg-gray-50 border border-gray-100 hover:bg-gray-100 hover:border-gray-200 transition-colors">
+                    <div className="flex items-center gap-4">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${activeColor}`}>
+                        <IconTag size={18} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-gray-900">{entry.name}</p>
+                        <p className="text-xs text-gray-500">{entry.time || '--:--'} • {entry.date || 'Today'}</p>
+                      </div>
                     </div>
-                    <span className="text-sm font-semibold text-accent-blue">{log.value || 0}u</span>
+                    <span className={`text-base font-bold ${activeColor.split(' ')[0]}`}>
+                      {entry.value} {entry.unit}
+                    </span>
                   </div>
-                ))}
-                {insulinLogs.length === 0 && <p className="text-sm text-gray-500">No insulin logs yet.</p>}
-              </div>
+                );
+              })}
+              {allEntries.length === 0 && (
+                <div className="text-center py-8">
+                  <p className="text-sm text-gray-500">No entries logged yet. All your inputs will appear here.</p>
+                </div>
+              )}
             </div>
           </div>
+
         </div>
       </DashboardLayout>
     </div>
