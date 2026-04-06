@@ -14,12 +14,27 @@ import {
   getRecommendations,
   calculateLBGIRisk
 } from '../utils/glucosePrediction';
+import { getUserScopedKey } from '../utils/userStorage';
 
 // ML Engine
 import { initializeMLModel, predictTrajectoryML } from '../utils/mlEngine';
 
 export default function Predict() {
   const navigate = useNavigate();
+  const defaultLastMealTime = (() => {
+    const d = new Date();
+    d.setHours(d.getHours() - 1);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+  })();
+  const userProfile = (() => {
+    const raw = localStorage.getItem(getUserScopedKey('glucowave_user_profile'));
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  })();
 
   // ── ML State ──
   const [isModelLoaded, setIsModelLoaded] = useState(false);
@@ -32,19 +47,12 @@ export default function Predict() {
 
   // ── Form State ──
   const [glucose, setGlucose] = useState('');
-  const [lastMealTime, setLastMealTime] = useState('');
+  const [lastMealTime, setLastMealTime] = useState(userProfile?.breakfastTime || defaultLastMealTime);
   const [mealType, setMealType] = useState('rice_and_dal');
 
   // ── Result State ──
   const [result, setResult] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-
-  // Default to 1 hour ago for the last meal time on mount
-  useEffect(() => {
-    const d = new Date();
-    d.setHours(d.getHours() - 1);
-    setLastMealTime(d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }));
-  }, []);
 
   const handlePredict = async (e) => {
     e.preventDefault();
@@ -123,7 +131,7 @@ export default function Predict() {
                   1-Click <span className="text-orange-600">AI Predict</span>
                 </h1>
                 <p className="text-gray-600 mt-1">
-                  Modeling your explicit digestion footprint.
+                  Modeling your explicit digestion footprint ({userProfile?.activityLevel || 'Normal'} profile).
                 </p>
               </div>
             </div>

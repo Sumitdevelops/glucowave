@@ -1,8 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import Navbar from '../components/layout/Navbar';
+import { auth, db } from '../lib/firebase';
+import { useAuth } from '../context/useAuth';
 
 export default function Signup() {
   const [formData, setFormData] = useState({
@@ -14,8 +18,13 @@ export default function Signup() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const { user } = useAuth();
 
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user) navigate('/dashboard');
+  }, [user, navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -49,11 +58,28 @@ export default function Signup() {
       return;
     }
 
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const credential = await createUserWithEmailAndPassword(
+        auth,
+        formData.email.trim(),
+        formData.password,
+      );
+      await updateProfile(credential.user, { displayName: formData.fullName.trim() });
+      await setDoc(
+        doc(db, 'users', credential.user.uid),
+        {
+          fullName: formData.fullName.trim(),
+          email: formData.email.trim(),
+          createdAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
       setLoading(false);
       navigate('/onboarding');
-    }, 1500);
+    } catch (err) {
+      setError(err.message || 'Could not create account');
+      setLoading(false);
+    }
   };
 
   return (

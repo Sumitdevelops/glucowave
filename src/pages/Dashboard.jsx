@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Syringe, Utensils, Dumbbell, Heart, Activity } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
@@ -7,9 +8,22 @@ import GlucoseChart from '../components/dashboard/GlucoseChart';
 import PredictionCard from '../components/dashboard/PredictionCard';
 import StatCard from '../components/dashboard/StatCard';
 import { currentGlucose, predictionData, insulinLogs, mealLogs, activityLogs } from '../data/mockData';
+import { useAuth } from '../context/useAuth';
+import { getUserScopedKey } from '../utils/userStorage';
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [activityLevel] = useState(() => {
+    const raw = localStorage.getItem(getUserScopedKey('glucowave_user_profile'));
+    if (!raw) return 'Normal';
+    try {
+      const profile = JSON.parse(raw);
+      return profile?.activityLevel || 'Normal';
+    } catch {
+      return 'Normal';
+    }
+  });
 
   return (
     <div>
@@ -19,9 +33,11 @@ export default function Dashboard() {
           {/* Greeting */}
           <div>
             <h1 className="text-3xl font-bold text-gray-900 font-[Poppins]">
-              Hi, <span className="text-orange-600">User</span> 👋
+              Hi, <span className="text-orange-600">{user?.displayName || 'User'}</span> 👋
             </h1>
-            <p className="text-gray-600 mt-1">Here's your health overview for today</p>
+            <p className="text-gray-600 mt-1">
+              Here's your health overview for today ({activityLevel} activity profile)
+            </p>
           </div>
 
           {/* Top: Glucose + Prediction */}
