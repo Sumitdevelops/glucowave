@@ -6,6 +6,18 @@ import Navbar from '../components/layout/Navbar';
 import { auth } from '../lib/firebase';
 import { useAuth } from '../context/useAuth';
 
+function mapAuthError(errorCode) {
+  const mapping = {
+    'auth/configuration-not-found': 'Firebase Auth is not configured. In Firebase Console, enable Authentication and Email/Password sign-in.',
+    'auth/operation-not-allowed': 'Email/Password sign-in is disabled. Enable it in Firebase Console -> Authentication -> Sign-in method.',
+    'auth/invalid-credential': 'Invalid email or password.',
+    'auth/user-not-found': 'No account found for this email.',
+    'auth/wrong-password': 'Invalid email or password.',
+    'auth/invalid-email': 'Invalid email address.',
+  };
+  return mapping[errorCode] || 'Sign in failed.';
+}
+
 export default function Signin() {
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
@@ -29,7 +41,7 @@ export default function Signin() {
       await signInWithEmailAndPassword(auth, formData.email, formData.password);
       navigate(redirectTo, { replace: true });
     } catch (err) {
-      setError(err.message || 'Sign in failed');
+      setError(`Firebase Error: ${mapAuthError(err?.code)}`);
     } finally {
       setLoading(false);
     }

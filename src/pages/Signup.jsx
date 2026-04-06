@@ -8,6 +8,17 @@ import Navbar from '../components/layout/Navbar';
 import { auth, db } from '../lib/firebase';
 import { useAuth } from '../context/useAuth';
 
+function mapAuthError(errorCode) {
+  const mapping = {
+    'auth/configuration-not-found': 'Firebase Auth is not configured. In Firebase Console, enable Authentication and Email/Password sign-in.',
+    'auth/operation-not-allowed': 'Email/Password sign-in is disabled. Enable it in Firebase Console -> Authentication -> Sign-in method.',
+    'auth/email-already-in-use': 'This email is already in use. Try signing in instead.',
+    'auth/invalid-email': 'Invalid email address.',
+    'auth/weak-password': 'Password is too weak. Use at least 6 characters.',
+  };
+  return mapping[errorCode] || 'Could not create account.';
+}
+
 export default function Signup() {
   const [formData, setFormData] = useState({
     fullName: '',
@@ -77,7 +88,7 @@ export default function Signup() {
       setLoading(false);
       navigate('/onboarding');
     } catch (err) {
-      setError(err.message || 'Could not create account');
+      setError(`Firebase Error: ${mapAuthError(err?.code)}`);
       setLoading(false);
     }
   };

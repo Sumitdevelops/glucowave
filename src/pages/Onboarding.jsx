@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Activity, Clock, TrendingDown, Scale, CheckCircle2, ChevronRight } from 'lucide-react';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import Navbar from '../components/layout/Navbar';
 import { useAuth } from '../context/useAuth';
-import { db } from '../lib/firebase';
 import { getUserScopedKey } from '../utils/userStorage';
+import { saveUserProfile } from '../services/userData';
 
 export default function Onboarding() {
   const navigate = useNavigate();
@@ -29,11 +28,7 @@ export default function Onboarding() {
   const handleComplete = async () => {
     if (!user) return;
     localStorage.setItem(getUserScopedKey('glucowave_user_profile'), JSON.stringify(profile));
-    await setDoc(
-      doc(db, 'users', user.uid),
-      { profile, profileUpdatedAt: serverTimestamp() },
-      { merge: true },
-    );
+    await saveUserProfile(user.uid, profile);
     navigate('/dashboard');
   };
 
