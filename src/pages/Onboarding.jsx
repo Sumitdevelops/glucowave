@@ -26,9 +26,22 @@ export default function Onboarding() {
   };
 
   const handleComplete = async () => {
-    if (!user) return;
+    if (!user) {
+        // Even if not logged in for the demo, let's allow navigation
+        localStorage.setItem(getUserScopedKey('glucowave_user_profile'), JSON.stringify(profile));
+        navigate('/dashboard');
+        return;
+    }
+    
+    // Save locally immediately so the app works
     localStorage.setItem(getUserScopedKey('glucowave_user_profile'), JSON.stringify(profile));
-    await saveUserProfile(user.uid, profile);
+    
+    try {
+      await saveUserProfile(user.uid, profile);
+    } catch (error) {
+      console.warn('Firestore cloud save blocked/failed, but local profile was updated.', error);
+    }
+    
     navigate('/dashboard');
   };
 

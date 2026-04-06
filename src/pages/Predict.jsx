@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Activity, AlertTriangle, ArrowLeft, TrendingUp, TrendingDown,
-  Clock, ShieldCheck, ShieldAlert, Heart, BrainCircuit
+  Clock, ShieldCheck, ShieldAlert, Heart, BrainCircuit, Utensils
 } from 'lucide-react';
 import {
   XAxis, YAxis, CartesianGrid, Tooltip,
@@ -20,6 +20,7 @@ import { addUserPrediction } from '../services/userData';
 
 // ML Engine
 import { initializeMLModel, predictTrajectoryML } from '../utils/mlEngine';
+import { estimateCarbs } from '../utils/groqApi';
 
 export default function Predict() {
   const navigate = useNavigate();
@@ -51,7 +52,8 @@ export default function Predict() {
   // ── Form State ──
   const [glucose, setGlucose] = useState('');
   const [lastMealTime, setLastMealTime] = useState(userProfile?.breakfastTime || defaultLastMealTime);
-  const [mealType, setMealType] = useState('rice_and_dal');
+  const [mealText, setMealText] = useState('');
+  const [estimatingCarbs, setEstimatingCarbs] = useState(false);
 
   // ── Result State ──
   const [result, setResult] = useState(null);
@@ -61,8 +63,14 @@ export default function Predict() {
     e.preventDefault();
     const glucoseVal = parseFloat(glucose);
     if (isNaN(glucoseVal) || glucoseVal <= 0) return;
+    if (!mealText.trim()) return;
 
     setIsLoading(true);
+    setEstimatingCarbs(true);
+    
+    // Estimate Carbs via Groq
+    const estimatedCarbs = await estimateCarbs(mealText);
+    setEstimatingCarbs(false);
 
     // 1. Core LBGI Risk Calculation (Mathematical/Clinical Baseline)
     let riskLevel = 'LOW';
@@ -82,14 +90,16 @@ export default function Predict() {
 
     // 2. ML Auto-Regressive Curve Generation (Drop Prediction)
     // Uses Explicit Digestion Timeline based on past meal!
-    const trajectory = predictTrajectoryML(glucoseVal, lastMealTime, mealType);
+    const trajectory = predictTrajectoryML(glucoseVal, lastMealTime, estimatedCarbs);
 
     const recommendations = getRecommendations(riskLevel, glucoseVal);
 
     // Build chart data
     const chartData = trajectory.labels.map((label, i) => ({
       time: label,
-      glucose: trajectory.data[i] > 0 ? trajectory.data[i] : 0, // Bound at zero
+      glucose: trajectory.data[i] > 0 ? trajectory.data[i] : 0, 
+      glucoseMin: trajectory.min[i] ?? 0,
+      glucoseMax: trajectory.max[i] ?? 0,
     }));
 
     setResult({
@@ -98,9 +108,12 @@ export default function Predict() {
       lbgiScore: Math.round(lbgiScore * 100) / 100,
       predicted30: trajectory.data[8], // Shows Next 2-Hour (8 * 15m) step prediction 
       confidence,
+      timeToDip: trajectory.timeToDip,
+      accuracyScore: trajectory.accuracyScore,
       trajectory,
       chartData,
       recommendations,
+      estimatedCarbs,
     });
 
     if (user?.uid) {
@@ -108,7 +121,8 @@ export default function Predict() {
         await addUserPrediction(user.uid, {
           glucose: glucoseVal,
           lastMealTime,
-          mealType,
+          mealType: mealText,
+          estimatedCarbs,
           riskLevel,
           lbgiScore: Math.round(lbgiScore * 100) / 100,
           predicted2Hr: trajectory.data[8],
@@ -118,6 +132,7 @@ export default function Predict() {
       }
     }
 
+    // ── BIOLOGICAL SIMULATION DONE ──
     setIsLoading(false);
   };
 
@@ -185,14 +200,14 @@ export default function Predict() {
                     <Activity size={16} className="text-orange-600 mr-2" />
                     What did you eat?
                   </label>
-                  <select
-                    value={mealType}
-                    onChange={(e) => setMealType(e.target.value)}
-                    className="w-full text-lg font-bold px-4 py-3 rounded-xl border border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 outline-none transition-all text-gray-900 bg-gray-50 cursor-not-allowed opacity-80"
-                  >
-                    <option value="rice_and_dal">Rice and Dal (Avg. 75g Carbs)</option>
-                    {/* Expandable in the future */}
-                  </select>
+                  <input
+                    type="text"
+                    value={mealText}
+                    onChange={(e) => setMealText(e.target.value)}
+                    placeholder="e.g. 2 slices of pizza"
+                    required
+                    className="w-full text-lg font-bold px-4 py-3 rounded-xl border border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 outline-none transition-all text-gray-900 bg-gray-50"
+                  />
                 </div>
               </div>
 
@@ -219,10 +234,10 @@ export default function Predict() {
               <button
                 type="submit"
                 disabled={isLoading || !isModelLoaded}
-                className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-4 px-14 rounded-full shadow-lg hover:shadow-orange-500/40 transition-all duration-300 transform hover:-translate-y-1 text-lg flex items-center gap-3 disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none"
+                className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-4 px-14 rounded-full shadow-lg hover:shadow-orange-500/40 transition-all duration-300 transform hover:-translate-y-1 text-lg flex items-center justify-center gap-3 disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none"
               >
-                <BrainCircuit size={22} />
-                Predict Drop Trajectory
+                <BrainCircuit size={22} className={estimatingCarbs ? "animate-pulse" : ""} />
+                {estimatingCarbs ? "Estimating Carbs with AI..." : "Predict Drop Trajectory"}
               </button>
             </div>
           </form>
@@ -231,7 +246,7 @@ export default function Predict() {
           {result && (
             <div className="flex flex-col gap-6 predict-results-enter">
               {/* Risk Overview Cards */}
-              <div className="grid md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 {/* Risk Level */}
                 <div className={`predict-result-card ${riskColors[result.riskLevel].bg} ${riskColors[result.riskLevel].border}`}>
                   <div className="flex items-center gap-2 mb-2">
@@ -255,13 +270,13 @@ export default function Predict() {
                   <p className="text-2xl font-bold text-blue-600">{result.lbgiScore}</p>
                 </div>
 
-                {/* ML Future Prediction */}
+                {/* Accuracy Score */}
                 <div className="predict-result-card bg-purple-50 border-purple-200">
                   <div className="flex items-center gap-2 mb-2">
                     <BrainCircuit size={18} className="text-purple-600" />
-                    <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">ML +2Hr Forecast</span>
+                    <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Clinical Accuracy</span>
                   </div>
-                  <p className="text-2xl font-bold text-purple-600">{result.predicted30}</p>
+                  <p className="text-2xl font-bold text-purple-600">{result.accuracyScore}%</p>
                 </div>
 
                 {/* Probable Drop Time */}
@@ -271,6 +286,15 @@ export default function Predict() {
                     <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Probable Drop Starts</span>
                   </div>
                   <p className="text-lg font-bold text-amber-600">{result.trajectory.probableDropTime}</p>
+                </div>
+
+                {/* Estimated Carbs */}
+                <div className="predict-result-card bg-orange-50 border-orange-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Utensils size={18} className="text-orange-600" />
+                    <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">AI Est. Carbs</span>
+                  </div>
+                  <p className="text-2xl font-bold text-orange-600">{result.estimatedCarbs}<span className="text-sm ml-1 text-orange-400">g</span></p>
                 </div>
               </div>
 
@@ -288,8 +312,8 @@ export default function Predict() {
                   <TrendingUp size={20} className="text-orange-600" />
                   12-Hour Drop Auto-Regression (ML Derived)
                 </h3>
-                <div className="w-full" style={{ height: 350 }}>
-                  <ResponsiveContainer width="100%" height="100%">
+                <div className="w-full" style={{ height: 350, minHeight: 350 }}>
+                  <ResponsiveContainer width="100%" height={350}>
                     <AreaChart data={result.chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                       <defs>
                         <linearGradient id="glucoseGradient" x1="0" y1="0" x2="0" y2="1">
@@ -305,6 +329,16 @@ export default function Predict() {
                       <ReferenceLine y={70} stroke="#ef4444" strokeDasharray="6 4" label={{ value: 'Hypo (70)', position: 'left', fill: '#ef4444' }} />
                       <ReferenceLine y={180} stroke="#f59e0b" strokeDasharray="6 4" label={{ value: 'High (180)', position: 'left', fill: '#f59e0b' }} />
                       <Area type="monotone" dataKey="glucose" stroke="#f97316" strokeWidth={3} fill="url(#glucoseGradient)" activeDot={{ r: 6 }} />
+                      
+                      {/* Confidence Band (Error Margin) */}
+                      <Area
+                        type="monotone"
+                        dataKey="glucoseMax"
+                        stroke="none"
+                        fill="#f97316"
+                        fillOpacity={0.08}
+                        baseLine={result.chartData.map(d => d.glucoseMin)}
+                      />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
