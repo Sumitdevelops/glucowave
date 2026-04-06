@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Activity, Menu, X, Sun, Moon } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import { signOut } from 'firebase/auth';
 import { useTheme } from '../../context/ThemeContext';
-import Button from '../ui/Button';
+import { useAuth } from '../../context/useAuth';
+import { auth } from '../../lib/firebase';
 
 const landingLinks = [
   { label: 'Features', href: '/features' },
@@ -22,6 +24,7 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const { isDark, toggleTheme } = useTheme();
+  const { user } = useAuth();
   const isLanding = location.pathname === '/';
   const navLinks = isLanding ? landingLinks : dashboardLinks;
 
@@ -59,8 +62,15 @@ export default function Navbar() {
             {isDark ? <Sun size={20} /> : <Moon size={20} />}
           </button>
           
-          {isLanding && (
-            <Link to="/signup" className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center bg-slate-800 hover:bg-slate-700 transition-colors border border-slate-700 hover:border-accent-blue/50">
+          {user ? (
+            <button
+              onClick={() => signOut(auth)}
+              className="px-4 py-2 rounded-full bg-slate-800 hover:bg-slate-700 text-sm text-white border border-slate-700 hover:border-accent-blue/50 transition-colors"
+            >
+              Logout
+            </button>
+          ) : (
+            <Link to="/signin" className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center bg-slate-800 hover:bg-slate-700 transition-colors border border-slate-700 hover:border-accent-blue/50">
               <DotLottieReact
                 src="/Login.json"
                 loop
@@ -94,8 +104,18 @@ export default function Navbar() {
                 {link.label}
               </Link>
             ))}
-            {isLanding && (
-              <Link to="/signup" onClick={() => setMobileOpen(false)} className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center bg-slate-800 hover:bg-slate-700 transition-colors border border-slate-700 hover:border-accent-blue/50">
+            {user ? (
+              <button
+                onClick={() => {
+                  signOut(auth);
+                  setMobileOpen(false);
+                }}
+                className="px-4 py-2 rounded-full bg-slate-800 hover:bg-slate-700 text-sm text-white border border-slate-700 hover:border-accent-blue/50 transition-colors w-fit"
+              >
+                Logout
+              </button>
+            ) : (
+              <Link to="/signin" onClick={() => setMobileOpen(false)} className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center bg-slate-800 hover:bg-slate-700 transition-colors border border-slate-700 hover:border-accent-blue/50">
                 <DotLottieReact
                   src="/Login.json"
                   loop

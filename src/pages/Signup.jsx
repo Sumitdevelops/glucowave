@@ -1,8 +1,23 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import Navbar from '../components/layout/Navbar';
+import { auth, db } from '../lib/firebase';
+import { useAuth } from '../context/useAuth';
+
+function mapAuthError(errorCode) {
+  const mapping = {
+    'auth/configuration-not-found': 'Firebase Auth is not configured. In Firebase Console, enable Authentication and Email/Password sign-in.',
+    'auth/operation-not-allowed': 'Email/Password sign-in is disabled. Enable it in Firebase Console -> Authentication -> Sign-in method.',
+    'auth/email-already-in-use': 'This email is already in use. Try signing in instead.',
+    'auth/invalid-email': 'Invalid email address.',
+    'auth/weak-password': 'Password is too weak. Use at least 6 characters.',
+  };
+  return mapping[errorCode] || 'Could not create account.';
+}
 
 export default function Signup() {
   const [formData, setFormData] = useState({
@@ -14,8 +29,13 @@ export default function Signup() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const { user } = useAuth();
 
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user) navigate('/dashboard');
+  }, [user, navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -49,11 +69,28 @@ export default function Signup() {
       return;
     }
 
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const credential = await createUserWithEmailAndPassword(
+        auth,
+        formData.email.trim(),
+        formData.password,
+      );
+      await updateProfile(credential.user, { displayName: formData.fullName.trim() });
+      await setDoc(
+        doc(db, 'users', credential.user.uid),
+        {
+          fullName: formData.fullName.trim(),
+          email: formData.email.trim(),
+          createdAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
       setLoading(false);
       navigate('/onboarding');
-    }, 1500);
+    } catch (err) {
+      setError(`Firebase Error: ${mapAuthError(err?.code)}`);
+      setLoading(false);
+    }
   };
 
   return (

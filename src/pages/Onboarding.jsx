@@ -1,10 +1,14 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Activity, Clock, LogIn, TrendingDown, Scale, CheckCircle2, ChevronRight } from 'lucide-react';
+import { Activity, Clock, TrendingDown, Scale, CheckCircle2, ChevronRight } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
+import { useAuth } from '../context/useAuth';
+import { getUserScopedKey } from '../utils/userStorage';
+import { saveUserProfile } from '../services/userData';
 
 export default function Onboarding() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [step, setStep] = useState(1);
   
   const [profile, setProfile] = useState({
@@ -21,8 +25,10 @@ export default function Onboarding() {
     setProfile(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const handleComplete = () => {
-    localStorage.setItem('glucowave_user_profile', JSON.stringify(profile));
+  const handleComplete = async () => {
+    if (!user) return;
+    localStorage.setItem(getUserScopedKey('glucowave_user_profile'), JSON.stringify(profile));
+    await saveUserProfile(user.uid, profile);
     navigate('/dashboard');
   };
 

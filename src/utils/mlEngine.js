@@ -1,5 +1,6 @@
 import Papa from 'papaparse';
 import MLR from 'ml-regression-multivariate-linear';
+import { getUserScopedKey } from './userStorage';
 
 let globalMLRModel = null;
 let historicalFeatures = []; // X array
@@ -101,9 +102,11 @@ export async function initializeMLModel() {
  */
 function getUserProfile() {
     try {
-        const raw = localStorage.getItem('glucowave_user_profile');
+        const raw = localStorage.getItem(getUserScopedKey('glucowave_user_profile'));
         if (raw) return JSON.parse(raw);
-    } catch(e) {}
+    } catch (error) {
+        console.warn('Failed to read user profile from storage', error);
+    }
     
     return {
         wakingTime: '07:00',
@@ -233,7 +236,7 @@ export function predictTrajectoryML(currentGlucose, lastMealTime, mealType) {
 function handleOnlineRetraining(currGlucose, currCarbs, currInsulin, currActivity) {
     try {
         const nowMs = Date.now();
-        const prevInputRaw = localStorage.getItem('glucowave_prev_input');
+        const prevInputRaw = localStorage.getItem(getUserScopedKey('glucowave_prev_input'));
         
         if (prevInputRaw) {
             const prev = JSON.parse(prevInputRaw);
@@ -265,7 +268,7 @@ function handleOnlineRetraining(currGlucose, currCarbs, currInsulin, currActivit
             activity: currActivity,
             hour: new Date().getHours() + new Date().getMinutes() / 60.0
         };
-        localStorage.setItem('glucowave_prev_input', JSON.stringify(newRecord));
+        localStorage.setItem(getUserScopedKey('glucowave_prev_input'), JSON.stringify(newRecord));
         
     } catch (e) {
         console.error("Online retraining sync failed", e);
@@ -289,16 +292,18 @@ function calculateDropStartTime(labels, data) {
 
 function savePersonalHistory(x, y) {
     try {
-        let hist = JSON.parse(localStorage.getItem('glucowave_personal_history') || '{"features":[],"targets":[]}');
+        let hist = JSON.parse(localStorage.getItem(getUserScopedKey('glucowave_personal_history')) || '{"features":[],"targets":[]}');
         hist.features.push(x);
         hist.targets.push(y);
-        localStorage.setItem('glucowave_personal_history', JSON.stringify(hist));
-    } catch(e) {}
+        localStorage.setItem(getUserScopedKey('glucowave_personal_history'), JSON.stringify(hist));
+    } catch (error) {
+        console.warn('Failed to save personal history', error);
+    }
 }
 
 function loadPersonalHistory() {
     try {
-        const histRaw = localStorage.getItem('glucowave_personal_history');
+        const histRaw = localStorage.getItem(getUserScopedKey('glucowave_personal_history'));
         if (histRaw) {
             const hist = JSON.parse(histRaw);
             if (hist.features && hist.targets) {
@@ -309,5 +314,7 @@ function loadPersonalHistory() {
                 console.log(`Loaded ${hist.features.length} personal historical rows into ML memory.`);
             }
         }
-    } catch(e) {}
+    } catch (error) {
+        console.warn('Failed to load personal history', error);
+    }
 }
