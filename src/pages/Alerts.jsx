@@ -4,11 +4,13 @@ import Navbar from '../components/layout/Navbar';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
-import { alerts } from '../data/mockData';
+import { useAuth } from '../context/useAuth';
+import { subscribeToUserPredictions } from '../services/userData';
 
 export default function Alerts() {
-  const [alertList, setAlertList] = useState(alerts);
+  const [alertList, setAlertList] = useState([]);
   const mainRef = useRef(null);
+  const { user } = useAuth();
 
   useEffect(() => {
     const initGSAP = async () => {
@@ -27,6 +29,42 @@ export default function Alerts() {
   const handleDismiss = (id) => {
     setAlertList(prev => prev.map(a => a.id === id ? { ...a, isActive: false } : a));
   };
+
+  useEffect(() => {
+    if (!user?.uid) return undefined;
+    return subscribeToUserPredictions(
+      user.uid,
+      (snapshot) => {
+        const items = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+        const mapped = items.slice(0, 20).map((p, idx) => {
+          const type = p.riskLevel === 'HIGH' ? 'danger' : p.riskLevel === 'MEDIUM' ? 'warning' : 'safe';
+          return {
+            id: p.id || `${idx}`,
+            type,
+            title:
+              type === 'danger'
+                ? 'High Risk Detected'
+                : type === 'warning'
+                  ? 'Moderate Risk'
+                  : 'Stable Prediction',
+            message: `Predicted glucose: ${p.predicted2Hr ?? p.glucose ?? 0} mg/dl (current ${p.glucose ?? 0} mg/dl).`,
+            risk: type === 'danger' ? 85 : type === 'warning' ? 55 : 20,
+            timeWindow: '2 hours',
+            timestamp: new Date(p.createdAtMs || Date.now()).toLocaleString(),
+            actions:
+              type === 'danger'
+                ? ['Consume fast carbs if needed', 'Recheck glucose in 15 mins', 'Avoid strenuous activity']
+                : type === 'warning'
+                  ? ['Keep snack ready', 'Monitor trend in 30 mins']
+                  : [],
+            isActive: true,
+          };
+        });
+        setAlertList(mapped);
+      },
+      () => setAlertList([]),
+    );
+  }, [user?.uid]);
 
   const getAlertIcon = (type) => {
     switch (type) {
@@ -66,6 +104,9 @@ export default function Alerts() {
 
           {/* Alerts list */}
           <div className="flex flex-col gap-6">
+            {alertList.length === 0 && (
+              <div className="glass-card p-6 text-slate-400">No personalized alerts yet. Run predictions to generate AI alerts.</div>
+            )}
             {alertList.map((alert) => {
               const AlertIcon = getAlertIcon(alert.type);
               return (

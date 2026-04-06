@@ -1,18 +1,11 @@
 import { useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
-import { glucoseDataToday, glucoseDataWeek, glucoseDataMonth } from '../../data/mockData';
 
 const tabs = [
   { label: 'Today', key: 'today' },
   { label: 'Week', key: 'week' },
   { label: 'Month', key: 'month' },
 ];
-
-const dataMap = {
-  today: glucoseDataToday,
-  week: glucoseDataWeek,
-  month: glucoseDataMonth,
-};
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
@@ -33,9 +26,13 @@ const CustomTooltip = ({ active, payload, label }) => {
   return null;
 };
 
-export default function GlucoseChart() {
+export default function GlucoseChart({ data = [] }) {
   const [activeTab, setActiveTab] = useState('today');
-  const data = dataMap[activeTab];
+  const tabData = (() => {
+    if (activeTab === 'today') return data.slice(-24);
+    if (activeTab === 'week') return data.slice(-56);
+    return data;
+  })();
 
   return (
     <div className="bg-white rounded-2xl p-6 shadow-md border border-gray-200">
@@ -63,7 +60,7 @@ export default function GlucoseChart() {
       {/* Chart */}
       <div className="h-72 bg-orange-50 rounded-xl p-4">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
+          <AreaChart data={tabData} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
             <defs>
               <linearGradient id="glucoseGrad" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#f97316" stopOpacity={0.3} />
