@@ -1,21 +1,21 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Syringe, Utensils, Dumbbell, Heart, Activity } from 'lucide-react';
+import { Syringe, Utensils, Dumbbell, Activity } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import GlucoseDisplay from '../components/dashboard/GlucoseDisplay';
 import GlucoseChart from '../components/dashboard/GlucoseChart';
 import PredictionCard from '../components/dashboard/PredictionCard';
 import StatCard from '../components/dashboard/StatCard';
-import { currentGlucose, predictionData } from '../data/mockData';
 import { useAuth } from '../context/useAuth';
 import { getUserScopedKey } from '../utils/userStorage';
-import { subscribeToUserLogs } from '../services/userData';
+import { subscribeToUserLogs, subscribeToUserPredictions } from '../services/userData';
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [logs, setLogs] = useState([]);
+  const [predictions, setPredictions] = useState([]);
   const [activityLevel] = useState(() => {
     const raw = localStorage.getItem(getUserScopedKey('glucowave_user_profile'));
     if (!raw) return 'Normal';
@@ -41,13 +41,75 @@ export default function Dashboard() {
     );
   }, [user?.uid]);
 
+  useEffect(() => {
+    if (!user?.uid) return undefined;
+    return subscribeToUserPredictions(
+      user.uid,
+      (snapshot) => {
+        const items = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+        setPredictions(items);
+      },
+      () => {
+        setPredictions([]);
+      },
+    );
+  }, [user?.uid]);
+
   const insulinLogs = logs.filter((l) => l.type === 'insulin');
   const mealLogs = logs.filter((l) => l.type === 'meal');
   const activityLogs = logs.filter((l) => l.type === 'activity');
+  const latestPrediction = predictions[0];
   const today = new Date().toLocaleDateString();
   const insulinToday = insulinLogs.filter((l) => l.date === today);
   const mealsToday = mealLogs.filter((l) => l.date === today);
   const activityToday = activityLogs.filter((l) => l.date === today);
+  const predictionData = latestPrediction
+    ? {
+        risk:
+          latestPrediction.riskLevel === 'HIGH'
+            ? 85
+            : latestPrediction.riskLevel === 'MEDIUM'
+              ? 55
+              : 20,
+        timeWindow: '2 hours',
+        predictedValue: latestPrediction.predicted2Hr ?? latestPrediction.glucose ?? 110,
+        confidence: latestPrediction.riskLevel === 'HIGH' ? 95 : 88,
+      }
+    : {
+        risk: 20,
+        timeWindow: '2 hours',
+        predictedValue: 110,
+        confidence: 80,
+      };
+
+  const currentGlucose = {
+    value: latestPrediction?.glucose ?? 110,
+    unit: 'mg/dl',
+    status:
+      (latestPrediction?.glucose ?? 110) < 70
+        ? 'low'
+        : (latestPrediction?.glucose ?? 110) > 180
+          ? 'high'
+          : 'normal',
+    trend: 'stable',
+    lastUpdated: latestPrediction ? 'just now' : 'no recent prediction',
+  };
+
+  const chartPoints = [...predictions]
+    .reverse()
+    .slice(-24)
+    .map((p) => ({
+      time: new Date(p.createdAtMs || Date.now()).toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+      date: new Date(p.createdAtMs || Date.now()).toLocaleDateString([], {
+        month: 'short',
+        day: 'numeric',
+      }),
+      glucose: p.glucose ?? 0,
+      predicted: p.predicted2Hr ?? p.glucose ?? 0,
+    }));
 
   return (
     <div>
@@ -88,7 +150,7 @@ export default function Dashboard() {
 
           {/* Middle: Chart */}
           <div>
-            <GlucoseChart />
+            <GlucoseChart data={chartPoints} />
           </div>
 
           {/* Bottom: Stat Cards */}

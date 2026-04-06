@@ -51,3 +51,13 @@ export function subscribeToUserLogs(uid, onNext, onError) {
   );
   return onSnapshot(q, onNext, onError);
 }
+
+export function subscribeToUserPredictions(uid, onNext, onError) {
+  requireUid(uid);
+  const q = query(
+    collection(db, 'users', uid, 'predictions'),
+    orderBy('createdAtMs', 'desc'),
+    limit(200),
+  );
+  return onSnapshot(q, onNext, onError);
+}

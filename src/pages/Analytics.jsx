@@ -5,19 +5,14 @@ import Navbar from '../components/layout/Navbar';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
-import { glucoseDataToday, glucoseDataWeek, glucoseDataMonth, analyticsPatterns, weeklyStats } from '../data/mockData';
+import { useAuth } from '../context/useAuth';
+import { subscribeToUserLogs, subscribeToUserPredictions } from '../services/userData';
 
 const timeFilters = [
   { label: '24h', key: 'today' },
   { label: '7d', key: 'week' },
   { label: '30d', key: 'month' },
 ];
-
-const dataMap = {
-  today: glucoseDataToday,
-  week: glucoseDataWeek,
-  month: glucoseDataMonth,
-};
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
@@ -36,6 +31,9 @@ const CustomTooltip = ({ active, payload, label }) => {
 export default function Analytics() {
   const [filter, setFilter] = useState('week');
   const mainRef = useRef(null);
+  const { user } = useAuth();
+  const [logs, setLogs] = useState([]);
+  const [predictions, setPredictions] = useState([]);
 
   useEffect(() => {
     const initGSAP = async () => {
@@ -51,7 +49,72 @@ export default function Analytics() {
     initGSAP();
   }, []);
 
-  const data = dataMap[filter];
+  useEffect(() => {
+    if (!user?.uid) return undefined;
+    return subscribeToUserLogs(
+      user.uid,
+      (snapshot) => {
+        setLogs(snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() })));
+      },
+      () => setLogs([]),
+    );
+  }, [user?.uid]);
+
+  useEffect(() => {
+    if (!user?.uid) return undefined;
+    return subscribeToUserPredictions(
+      user.uid,
+      (snapshot) => {
+        setPredictions(snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() })));
+      },
+      () => setPredictions([]),
+    );
+  }, [user?.uid]);
+
+  const orderedPredictions = [...predictions].reverse();
+  const data = orderedPredictions.map((p) => ({
+    time: new Date(p.createdAtMs || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    date: new Date(p.createdAtMs || Date.now()).toLocaleDateString([], { month: 'short', day: 'numeric' }),
+    glucose: p.glucose ?? 0,
+  }));
+
+  const averageGlucose = data.length
+    ? Math.round(data.reduce((sum, row) => sum + (row.glucose || 0), 0) / data.length)
+    : 0;
+  const inRange = data.length
+    ? Math.round((data.filter((d) => d.glucose >= 70 && d.glucose <= 180).length / data.length) * 100)
+    : 0;
+  const hypoEvents = data.filter((d) => d.glucose < 70).length;
+  const hyperEvents = data.filter((d) => d.glucose > 180).length;
+  const mealCount = logs.filter((l) => l.type === 'meal').length;
+  const activityCount = logs.filter((l) => l.type === 'activity').length;
+
+  const analyticsPatterns = [
+    {
+      id: 'p1',
+      pattern: hypoEvents > 0 ? 'Low-glucose events detected' : 'No low-glucose events detected',
+      frequency: `${hypoEvents} hypo events`,
+      severity: hypoEvents > 0 ? 'warning' : 'safe',
+    },
+    {
+      id: 'p2',
+      pattern: hyperEvents > 0 ? 'High-glucose spikes detected' : 'No high-glucose spikes detected',
+      frequency: `${hyperEvents} hyper events`,
+      severity: hyperEvents > 1 ? 'warning' : 'safe',
+    },
+    {
+      id: 'p3',
+      pattern: 'Meal logging activity',
+      frequency: `${mealCount} meal logs`,
+      severity: mealCount > 0 ? 'safe' : 'warning',
+    },
+    {
+      id: 'p4',
+      pattern: 'Exercise logging activity',
+      frequency: `${activityCount} activity logs`,
+      severity: activityCount > 0 ? 'safe' : 'warning',
+    },
+  ];
 
   return (
     <div>
@@ -85,11 +148,11 @@ export default function Analytics() {
           {/* Weekly summary cards */}
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
             {[
-              { label: 'Avg Glucose', value: `${weeklyStats.avgGlucose} mg/dl`, icon: Target, color: 'text-accent-cyan' },
-              { label: 'Time in Range', value: `${weeklyStats.timeInRange}%`, icon: Clock, color: 'text-accent-blue' },
-              { label: 'Hypo Events', value: weeklyStats.hypoEvents, icon: TrendingDown, color: 'text-warning' },
-              { label: 'Hyper Events', value: weeklyStats.hyperEvents, icon: TrendingUp, color: 'text-danger' },
-              { label: 'Logs Recorded', value: weeklyStats.logsRecorded, icon: BarChart3, color: 'text-accent-purple' },
+              { label: 'Avg Glucose', value: `${averageGlucose} mg/dl`, icon: Target, color: 'text-accent-cyan' },
+              { label: 'Time in Range', value: `${inRange}%`, icon: Clock, color: 'text-accent-blue' },
+              { label: 'Hypo Events', value: hypoEvents, icon: TrendingDown, color: 'text-warning' },
+              { label: 'Hyper Events', value: hyperEvents, icon: TrendingUp, color: 'text-danger' },
+              { label: 'Logs Recorded', value: logs.length, icon: BarChart3, color: 'text-accent-purple' },
             ].map((stat, i) => (
               <div key={i} className="analytics-card glass-card p-4 text-center" style={{ transform: 'none' }}>
                 <stat.icon size={20} className={`${stat.color} mx-auto mb-2`} />
@@ -107,7 +170,16 @@ export default function Analytics() {
             </div>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={data} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
+                <AreaChart
+                  data={
+                    filter === 'today'
+                      ? data.slice(-24)
+                      : filter === 'week'
+                        ? data.slice(-56)
+                        : data
+                  }
+                  margin={{ top: 5, right: 5, bottom: 5, left: -20 }}
+                >
                   <defs>
                     <linearGradient id="analyticsGrad" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.3} />
